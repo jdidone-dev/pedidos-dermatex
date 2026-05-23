@@ -615,6 +615,24 @@
       }
     }
 
+    /* ── ADMIN LOCK BUTTON ──────────────────────────── */
+    .admin-lock-btn {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, .35);
+      font-size: 1.15rem;
+      cursor: pointer;
+      padding: 8px 10px;
+      border-radius: 7px;
+      transition: color .2s, background .2s;
+      line-height: 1;
+    }
+
+    .admin-lock-btn:hover {
+      color: rgba(255, 255, 255, .9);
+      background: rgba(255, 255, 255, .12);
+    }
+
     /* ── ADMIN LOGIN ────────────────────────────────── */
     .admin-wrap {
       max-width: 380px;
@@ -736,7 +754,7 @@
            onerror="this.style.display='none'">
       <div class="brand-sub">Sistema de Pedidos</div>
     </div>
-    <div></div>
+    <button class="admin-lock-btn" onclick="goAdmin()" title="Área Administrativa">🔒</button>
   </header>
 
   <div class="container">
@@ -881,7 +899,7 @@
         <div class="history-header">
           <div class="card-title" style="margin:0;border:none;padding:0;">📋 Pedidos Salvos</div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-ghost btn-sm" onclick="loadFromAzure()">↻ Atualizar</button>
+            <button class="btn btn-ghost btn-sm" onclick="loadFromGitHub()">↻ Atualizar</button>
             <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Sair</button>
           </div>
         </div>
@@ -902,13 +920,12 @@
       emailTo: "pedidos@dermatex.com.br",
       adminPassword: "dermatex2024",   // ← senha do painel admin
 
-      azure: {
-        account: "rmmsupremescripts1",        // ← nome da Storage Account  ex: "minhadermatex"
-        container: "pedidos", // ← nome do container
-        // SAS token do container (sem o "?")
-        // Permissões necessárias: Read, Write, Delete, List
-        // Gere em: Portal Azure → Storage Account → Shared access signature
-        sas: "sv=2025-11-05&ss=b&srt=sco&sp=rwdltfx&se=2026-05-01T04:31:50Z&st=2026-04-25T20:16:50Z&spr=https,http&sig=dRH6rkTHSxXJ1tVQTJJxExEnJe3wLIQhN60NtrMsujE%3D"
+      github: {
+        token:  "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",          // ← Personal Access Token (fine-grained: Contents read+write)
+        owner:  "jdidone-dev",          // ← usuário ou organização GitHub
+        repo:   "pedidos-dermatex",          // ← nome do repositório
+        branch: "main",      // ← branch onde os arquivos serão salvos
+        path:   "pedidos",   // ← pasta dentro do repositório
       }
     };
 
@@ -963,6 +980,12 @@
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.getElementById(id).classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goAdmin() {
+      window.location.hash = '#admin';
+      showPage('page-admin-login');
+      setTimeout(() => document.getElementById('admin-pw').focus(), 80);
     }
 
     // ═════════════════════════════════════════════════════
@@ -1052,13 +1075,13 @@
       btnSubmit.disabled = true;
       btnClear.disabled = true;
       btnSubmit.innerHTML = '⏳ Salvando...';
-      statusBar.innerHTML = `<div class="upload-status uploading"><div class="spinner"></div>Enviando pedido para a nuvem...</div>`;
+      statusBar.innerHTML = `<div class="upload-status uploading"><div class="spinner"></div>Enviando pedido para o GitHub...</div>`;
 
       try {
-        await azureUploadPDF(currentOrder);
-        statusBar.innerHTML = `<div class="upload-status ok">☁️ Pedido salvo com sucesso na nuvem.</div>`;
+        await githubUploadPDF(currentOrder);
+        statusBar.innerHTML = `<div class="upload-status ok">✅ Pedido salvo com sucesso no GitHub.</div>`;
       } catch (e) {
-        statusBar.innerHTML = `<div class="upload-status fail">⚠️ Não foi possível salvar na nuvem: ${e.message}. Você ainda pode baixar o PDF manualmente.</div>`;
+        statusBar.innerHTML = `<div class="upload-status fail">⚠️ Não foi possível salvar no GitHub: ${e.message}. Você ainda pode baixar o PDF manualmente.</div>`;
       }
 
       btnSubmit.disabled = false;
@@ -1393,14 +1416,21 @@
     }
 
     // ═════════════════════════════════════════════════════
-    // AZURE BLOB STORAGE
+    // GITHUB STORAGE
     // ═════════════════════════════════════════════════════
-    function azureContainerURL() {
-      const { account, container } = CONFIG.azure;
-      return `https://${account}.blob.core.windows.net/${container}`;
+    function ghHeaders() {
+      const { token } = CONFIG.github;
+      if (!token) throw new Error('Token do GitHub não configurado');
+      return { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' };
     }
 
-    function blobName(order) {
+    function ghApiBase() {
+      const { owner, repo } = CONFIG.github;
+      if (!owner || !repo) throw new Error('owner e repo do GitHub não configurados');
+      return `https://api.github.com/repos/${owner}/${repo}`;
+    }
+
+    function orderFileName(order) {
       const s = str => str.normalize('NFD')
         .replace(/[̀-ͯ]/g, '')
         .replace(/[^a-zA-Z0-9]+/g, '_')
@@ -1409,66 +1439,80 @@
       return `${order.id}__${s(order.client.name)}__${s(order.client.company)}.pdf`;
     }
 
-    async function azureUploadPDF(order) {
-      const { account, sas } = CONFIG.azure;
-      if (!account || !sas) throw new Error('Azure não configurado no arquivo');
+    function arrayBufferToBase64(buf) {
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      const chunk = 8192;
+      for (let i = 0; i < bytes.length; i += chunk)
+        bin += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+      return btoa(bin);
+    }
 
-      const bytes = (await buildPDF(order)).output('arraybuffer');
-      const url = `${azureContainerURL()}/${blobName(order)}?${sas}`;
+    async function githubUploadPDF(order) {
+      const { branch, path } = CONFIG.github;
+      const fileName = orderFileName(order);
+      const filePath = `${path}/${fileName}`;
+      const content  = arrayBufferToBase64((await buildPDF(order)).output('arraybuffer'));
 
-      const res = await fetch(url, {
+      const res = await fetch(`${ghApiBase()}/contents/${filePath}`, {
         method: 'PUT',
-        headers: {
-          'x-ms-blob-type': 'BlockBlob',
-          'Content-Type': 'application/pdf',
-        },
-        body: bytes,
+        headers: ghHeaders(),
+        body: JSON.stringify({
+          message: `Pedido ${order.id} — ${order.client.name}`,
+          content,
+          branch: branch || 'main',
+        }),
       });
 
       if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(`${res.status} ${res.statusText}${txt ? ' — ' + txt.slice(0, 120) : ''}`);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `GitHub ${res.status}`);
       }
     }
 
-    async function azureListBlobs() {
-      const { account, sas } = CONFIG.azure;
-      if (!account || !sas) throw new Error('Azure não configurado no arquivo');
-
-      const url = `${azureContainerURL()}?restype=container&comp=list&${sas}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText} — verifique o SAS token e as permissões do container`);
-
-      const xml = await res.text();
-      const dom = new DOMParser().parseFromString(xml, 'application/xml');
-
-      return Array.from(dom.querySelectorAll('Blob'))
-        .map(b => ({
-          name: b.querySelector('Name').textContent,
-          lastModified: b.querySelector('Last-Modified').textContent,
-          size: parseInt(b.querySelector('Content-Length').textContent) || 0,
-        }))
-        .sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
+    async function githubListFiles() {
+      const { branch, path } = CONFIG.github;
+      const url = `${ghApiBase()}/contents/${path}?ref=${branch || 'main'}`;
+      const res = await fetch(url, { headers: ghHeaders() });
+      if (res.status === 404) return [];
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `GitHub ${res.status}`);
+      }
+      const files = await res.json();
+      return files
+        .filter(f => f.type === 'file' && /\.pdf$/i.test(f.name))
+        .sort((a, b) => b.name.localeCompare(a.name));
     }
 
-    async function azureDownloadBlob(name) {
-      const { sas } = CONFIG.azure;
-      const url = `${azureContainerURL()}/${encodeURIComponent(name)}?${sas}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    async function githubDownloadFile(filePath) {
+      const res = await fetch(`${ghApiBase()}/contents/${filePath}`, {
+        headers: { ...ghHeaders(), 'Accept': 'application/vnd.github.v3.raw' },
+      });
+      if (!res.ok) throw new Error(`GitHub ${res.status}`);
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = name;
+      a.download = filePath.split('/').pop();
       a.click();
       URL.revokeObjectURL(a.href);
     }
 
-    async function azureDeleteBlob(name) {
-      const { sas } = CONFIG.azure;
-      const url = `${azureContainerURL()}/${encodeURIComponent(name)}?${sas}`;
-      const res = await fetch(url, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    async function githubDeleteFile(filePath, sha) {
+      const { branch } = CONFIG.github;
+      const res = await fetch(`${ghApiBase()}/contents/${filePath}`, {
+        method: 'DELETE',
+        headers: ghHeaders(),
+        body: JSON.stringify({
+          message: `Excluir ${filePath.split('/').pop()}`,
+          sha,
+          branch: branch || 'main',
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || `GitHub ${res.status}`);
+      }
     }
 
     // ═════════════════════════════════════════════════════
@@ -1481,7 +1525,7 @@
         document.getElementById('admin-pw').value = '';
         err.textContent = '';
         adminMode = true;
-        loadFromAzure();
+        loadFromGitHub();
         showPage('page-history');
       } else {
         err.textContent = 'Senha incorreta.';
@@ -1495,34 +1539,34 @@
     }
 
     function backToHistory() {
-      loadFromAzure();
+      loadFromGitHub();
       showPage('page-history');
     }
 
-    async function loadFromAzure() {
+    async function loadFromGitHub() {
       const el = document.getElementById('history-list');
       el.innerHTML = `
     <div class="empty-state">
       <div class="spinner" style="width:28px;height:28px;border-width:3px;margin:0 auto 12px;"></div>
-      <p>Consultando pedidos no Azure...</p>
+      <p>Consultando pedidos no GitHub...</p>
     </div>`;
 
       try {
-        const blobs = await azureListBlobs();
+        const files = await githubListFiles();
 
-        if (!blobs.length) {
-          el.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Nenhum pedido encontrado no container.</p></div>`;
+        if (!files.length) {
+          el.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Nenhum pedido encontrado no repositório.</p></div>`;
           return;
         }
 
-        el.innerHTML = blobs.map(b => {
-          const parts = b.name.replace(/\.pdf$/i, '').split('__');
-          const orderId = parts[0] || b.name;
-          const client = (parts[1] || '').replace(/_/g, ' ').trim();
+        el.innerHTML = files.map(f => {
+          const parts = f.name.replace(/\.pdf$/i, '').split('__');
+          const orderId = parts[0] || f.name;
+          const client  = (parts[1] || '').replace(/_/g, ' ').trim();
           const company = (parts[2] || '').replace(/_/g, ' ').trim();
-          const sizeKB = (b.size / 1024).toFixed(0) + ' KB';
-          const dateStr = fmtAzureDate(b.lastModified);
-          const nameId = CSS.escape(b.name);
+          const sizeKB  = (f.size / 1024).toFixed(0) + ' KB';
+          const dateStr = fmtOrderIdDate(orderId);
+          const esc = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
           return `
         <div class="history-item">
           <div class="history-item-info">
@@ -1530,8 +1574,8 @@
             <p>${orderId} · ${dateStr} · ${company || '—'} · ${sizeKB}</p>
           </div>
           <div class="history-item-actions">
-            <button class="btn btn-success btn-sm" onclick="adminDownload('${b.name.replace(/'/g, "\\'")}', this)">📥 PDF</button>
-            <button class="btn btn-danger  btn-sm" onclick="adminDelete('${b.name.replace(/'/g, "\\'")}', this)">🗑️</button>
+            <button class="btn btn-success btn-sm" onclick="adminDownload('${esc(f.path)}', this)">📥 PDF</button>
+            <button class="btn btn-danger  btn-sm" onclick="adminDelete('${esc(f.path)}', '${f.sha}', this)">🗑️</button>
           </div>
         </div>`;
         }).join('');
@@ -1541,16 +1585,16 @@
       <div class="empty-state">
         <div class="icon">❌</div>
         <p>${e.message}</p>
-        <small>Verifique as configurações do Azure no topo do arquivo (account, container, sas).</small>
+        <small>Verifique as configurações do GitHub no topo do arquivo (token, owner, repo).</small>
       </div>`;
       }
     }
 
-    async function adminDownload(name, btn) {
+    async function adminDownload(filePath, btn) {
       btn.disabled = true;
       btn.textContent = '⏳';
       try {
-        await azureDownloadBlob(name);
+        await githubDownloadFile(filePath);
       } catch (e) {
         toast('❌ Erro ao baixar: ' + e.message);
       } finally {
@@ -1559,14 +1603,14 @@
       }
     }
 
-    async function adminDelete(name, btn) {
-      if (!confirm(`Excluir o pedido "${name}"?`)) return;
+    async function adminDelete(filePath, sha, btn) {
+      if (!confirm(`Excluir o pedido "${filePath.split('/').pop()}"?`)) return;
       btn.disabled = true;
       btn.textContent = '⏳';
       try {
-        await azureDeleteBlob(name);
+        await githubDeleteFile(filePath, sha);
         toast('🗑️ Pedido excluído');
-        loadFromAzure();
+        loadFromGitHub();
       } catch (e) {
         toast('❌ Erro ao excluir: ' + e.message);
         btn.disabled = false;
@@ -1663,6 +1707,12 @@
     function fmtDate(iso) {
       const d = new Date(iso);
       return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function fmtOrderIdDate(orderId) {
+      const m = orderId.match(/DRX-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
+      if (!m) return orderId;
+      return `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}`;
     }
 
     function fmtAzureDate(str) {
