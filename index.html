@@ -349,6 +349,27 @@
       color: var(--primary-dark);
     }
 
+    .prod-field-input {
+      width: 100%;
+      padding: 5px 7px;
+      border: 1.5px solid var(--border);
+      border-radius: 5px;
+      font-size: .82rem;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color .2s;
+    }
+    .prod-field-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(228, 81, 1, .10);
+    }
+    .prod-field-input::placeholder { color: #ccc; }
+    .prod-pkg-select { cursor: pointer; }
+    .prod-pkg-select:invalid, .prod-pkg-select option[value=""] { color: #ccc; }
+    .prod-pkg-select option:not([value=""]) { color: var(--text); }
+
     /* ── BUTTONS ────────────────────────────────────── */
     .btn {
       display: inline-flex;
@@ -746,7 +767,7 @@
 
       <div class="card">
         <div class="card-title">📦 Lista de Produtos</div>
-        <p class="hint">Informe a quantidade desejada ao lado de cada produto. Deixe em branco os que não deseja.</p>
+        <p class="hint">Preencha os campos de cada linha com as informações do produto e informe a quantidade. Deixe em branco as linhas que não forem utilizadas.</p>
         <div class="table-wrap">
           <table class="prod-table">
             <thead>
@@ -947,22 +968,23 @@
     // ═════════════════════════════════════════════════════
     function buildProductTable() {
       const tbody = document.getElementById('prod-body');
-      let lastCat = null;
       PRODUCTS.forEach(p => {
-        if (p.cat !== lastCat) {
-          lastCat = p.cat;
-          const tr = document.createElement('tr');
-          tr.className = 'cat-row';
-          tr.innerHTML = `<td colspan="6">${p.cat}</td>`;
-          tbody.appendChild(tr);
-        }
         const tr = document.createElement('tr');
         tr.className = 'prod-row';
         tr.innerHTML = `
-      <td class="td-code">${p.code}</td>
-      <td>${p.name}</td>
-      <td class="td-pkg">${p.packaging}</td>
-      <td class="td-price">${p.price}</td>
+      <td class="td-code"><input type="text" class="prod-field-input" id="code-${p.id}" placeholder="Código"></td>
+      <td><input type="text" class="prod-field-input" id="name-${p.id}" placeholder="Descrição"></td>
+      <td class="td-pkg"><select class="prod-field-input prod-pkg-select" id="pkg-${p.id}">
+        <option value="">Embalagem</option>
+        <option>Caixa 24 un</option>
+        <option>Caixa 16 un</option>
+        <option>Balde 8 Kg</option>
+        <option>Caixa 4 un</option>
+        <option>Pote</option>
+        <option>Balde</option>
+        <option>Válvula</option>
+      </select></td>
+      <td class="td-price"><input type="text" class="prod-field-input" id="price-${p.id}" placeholder="Preço" oninput="updateRowTotal(${p.id})"></td>
       <td class="td-qty">
         <input type="number" class="qty-input" id="qty-${p.id}"
                min="0" step="1" placeholder="0" oninput="onQtyInput(this, ${p.id})">
@@ -1003,8 +1025,12 @@
       PRODUCTS.forEach(p => {
         const qty = parseInt(document.getElementById(`qty-${p.id}`).value) || 0;
         if (qty > 0) {
-          const rowTotal = calcRowTotal(p.price, qty);
-          items.push({ id: p.id, cat: p.cat, code: p.code, name: p.name, packaging: p.packaging, price: p.price, qty, rowTotal });
+          const code     = document.getElementById(`code-${p.id}`)?.value.trim()  || '';
+          const name     = document.getElementById(`name-${p.id}`)?.value.trim()  || '';
+          const packaging= document.getElementById(`pkg-${p.id}`)?.value.trim()   || '';
+          const priceStr = document.getElementById(`price-${p.id}`)?.value.trim() || '';
+          const rowTotal = calcRowTotal(priceStr, qty);
+          items.push({ id: p.id, cat: '', code, name, packaging, price: priceStr, qty, rowTotal });
         }
       });
       if (!items.length) { toast('⚠️ Selecione ao menos um produto'); return; }
@@ -1037,6 +1063,10 @@
         qty.classList.remove('filled');
         const tot = document.getElementById(`total-${p.id}`);
         if (tot) { tot.textContent = ''; tot.classList.remove('has-total'); }
+        ['code', 'name', 'pkg', 'price'].forEach(f => {
+          const el = document.getElementById(`${f}-${p.id}`);
+          if (el) el.value = '';
+        });
       });
       const gt = document.getElementById('grand-total');
       if (gt) { gt.textContent = '—'; gt.style.color = ''; gt.style.fontSize = ''; }
@@ -1403,7 +1433,7 @@
     }
 
     function updateRowTotal(productId) {
-      const p = PRODUCTS.find(x => x.id === productId);
+      const priceStr = document.getElementById(`price-${productId}`)?.value || '';
       const qty = parseInt(document.getElementById(`qty-${productId}`)?.value) || 0;
       const el = document.getElementById(`total-${productId}`);
       if (!el) return;
@@ -1412,7 +1442,7 @@
         el.textContent = '';
         el.classList.remove('has-total');
       } else {
-        const rt = calcRowTotal(p.price, qty);
+        const rt = calcRowTotal(priceStr, qty);
         if (rt != null) {
           el.textContent = fmtCurrency(rt);
           el.classList.add('has-total');
@@ -1430,7 +1460,8 @@
         const qty = parseInt(document.getElementById(`qty-${p.id}`)?.value) || 0;
         if (qty > 0) {
           hasQty = true;
-          const rt = calcRowTotal(p.price, qty);
+          const priceStr = document.getElementById(`price-${p.id}`)?.value || '';
+          const rt = calcRowTotal(priceStr, qty);
           if (rt != null) sum += rt;
           else allPriced = false;
         }
