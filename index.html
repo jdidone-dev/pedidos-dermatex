@@ -169,6 +169,32 @@
       border-color: var(--danger);
     }
 
+    .radio-group {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .radio-group-label {
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      white-space: nowrap;
+    }
+    .radio-options { display: flex; gap: 16px; }
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: .9rem;
+      color: var(--text);
+    }
+    .radio-option input[type="radio"] { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+
     /* ── PRODUCTS TABLE ─────────────────────────────── */
     .hint {
       font-size: .8rem;
@@ -369,6 +395,8 @@
     .prod-pkg-select { cursor: pointer; }
     .prod-pkg-select:invalid, .prod-pkg-select option[value=""] { color: #ccc; }
     .prod-pkg-select option:not([value=""]) { color: var(--text); }
+    .prod-pkg-select.err,
+    .prod-field-input.err { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(192,57,43,.15); }
 
     /* ── BUTTONS ────────────────────────────────────── */
     .btn {
@@ -763,6 +791,19 @@
             <input type="email" id="f-email" placeholder="email@exemplo.com" autocomplete="email">
           </div>
         </div>
+        <div class="radio-group">
+          <span class="radio-group-label">Faturamento</span>
+          <div class="radio-options">
+            <label class="radio-option">
+              <input type="radio" name="f-faturamento" id="f-fat-direto" value="Direto" checked>
+              <span>Direto</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="f-faturamento" id="f-fat-revenda" value="Revenda">
+              <span>Revenda</span>
+            </label>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -905,30 +946,32 @@
     };
 
     // ═════════════════════════════════════════════════════
-    // PRODUTOS  ← substitua pelos produtos reais
+    // PRODUTOS  ← edite aqui os dados fixos de cada produto
     // ═════════════════════════════════════════════════════
-    // código | categoria | descrição | embalagem | preço
+    // Para trocar um produto de categoria: altere o valor de cat: "..."
+    // para o nome exato de outra categoria existente, ou crie uma nova.
+    // A ordem dos produtos no array não importa — o agrupamento é automático.
     const PRODUCTS = [
       // ── Dermatex Creme Esfoliante ──────────────────────
-      { id:  1, cat: "Dermatex Creme Esfoliante", code: "---", name: "Produto 1", packaging: "---", price: "---" },
-      { id:  2, cat: "Dermatex Creme Esfoliante", code: "---", name: "Produto 2", packaging: "---", price: "---" },
-      { id:  3, cat: "Dermatex Creme Esfoliante", code: "---", name: "Produto 3", packaging: "---", price: "---" },
+      { id:  1, cat: "Dermatex Creme Esfoliante", code: "799", name: "Creme Pote 230g", packaging: "---", price: "---" },
+      { id:  2, cat: "Dermatex Creme Esfoliante", code: "798", name: "Creme Pote 700g", packaging: "---", price: "---" },
+      { id:  3, cat: "Dermatex Creme Esfoliante", code: "803", name: "Creme Balde 3 Kg", packaging: "---", price: "---" },
+      { id:  4, cat: "Dermatex Creme Esfoliante",   code: "793", name: "Creme Balde 8 Kg", packaging: "---", price: "---" },
       // ── Dermatex Gel Esfoliante ────────────────────────
-      { id:  4, cat: "Dermatex Gel Esfoliante",   code: "---", name: "Produto 1", packaging: "---", price: "---" },
-      { id:  5, cat: "Dermatex Gel Esfoliante",   code: "---", name: "Produto 2", packaging: "---", price: "---" },
-      { id:  6, cat: "Dermatex Gel Esfoliante",   code: "---", name: "Produto 3", packaging: "---", price: "---" },
+      { id:  5, cat: "Dermatex Gel Esfoliante",   code: "801", name: "Gel Frasco 500ml", packaging: "---", price: "---" },
+      { id:  6, cat: "Dermatex Gel Esfoliante",   code: "881", name: "Gel Frasco 1 L", packaging: "---", price: "---" },
       // ── Dermatex Pasta Branca ──────────────────────────
-      { id:  7, cat: "Dermatex Pasta Branca",     code: "---", name: "Produto 1", packaging: "---", price: "---" },
-      { id:  8, cat: "Dermatex Pasta Branca",     code: "---", name: "Produto 2", packaging: "---", price: "---" },
-      { id:  9, cat: "Dermatex Pasta Branca",     code: "---", name: "Produto 3", packaging: "---", price: "---" },
+      { id:  7, cat: "Dermatex Gel Esfoliante",     code: "802", name: "Gel Bombona 3 L", packaging: "---", price: "---" },
+      { id:  8, cat: "Dermatex Gel Esfoliante",     code: "980", name: "Gel Bombona 5 L", packaging: "---", price: "---" },
+      { id:  9, cat: "Dermatex Gel Esfoliante",     code: "566", name: "Válvula p/ Gel", packaging: "---", price: "---" },
       // ── Dermatex Pasta Rosa ────────────────────────────
-      { id: 10, cat: "Dermatex Pasta Rosa",       code: "---", name: "Produto 1", packaging: "---", price: "---" },
-      { id: 11, cat: "Dermatex Pasta Rosa",       code: "---", name: "Produto 2", packaging: "---", price: "---" },
-      { id: 12, cat: "Dermatex Pasta Rosa",       code: "---", name: "Produto 3", packaging: "---", price: "---" },
+      { id: 10, cat: "Dermatex Pasta Branca",       code: "496", name: "Pasta Branca Pote 250g", packaging: "---", price: "---" },
+      { id: 11, cat: "Dermatex Pasta Branca",       code: "488", name: "Pasta Branca Pote 750g", packaging: "---", price: "---" },
+      { id: 12, cat: "Dermatex Pasta Branca",       code: "479", name: "Pasta Branca Balde 3 Kg", packaging: "---", price: "---" },
       // ── Dermatex Sabonete Líquido ──────────────────────
-      { id: 13, cat: "Dermatex Sabonete Líquido", code: "---", name: "Produto 1", packaging: "---", price: "---" },
-      { id: 14, cat: "Dermatex Sabonete Líquido", code: "---", name: "Produto 2", packaging: "---", price: "---" },
-      { id: 15, cat: "Dermatex Sabonete Líquido", code: "---", name: "Produto 3", packaging: "---", price: "---" },
+      { id: 13, cat: "Dermatex Pasta Branca", code: "516", name: "Pasta Sache 3 Kg", packaging: "---", price: "---" },
+      { id: 14, cat: "Dermatex Pasta Rosa", code: "211", name: "Pasta Rosa Balde 3 Kg", packaging: "---", price: "---" },
+      { id: 14, cat: "Dermatex Sabonete Líquido", code: "308", name: "Sabonete Liquido Erva Doce 3 L", packaging: "---", price: "---" },
     ];
 
     // ═════════════════════════════════════════════════════
@@ -968,38 +1011,75 @@
     // ═════════════════════════════════════════════════════
     function buildProductTable() {
       const tbody = document.getElementById('prod-body');
+
+      // Agrupa preservando a primeira aparição de cada categoria
+      const catMap = new Map();
       PRODUCTS.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.className = 'prod-row';
-        tr.innerHTML = `
-      <td class="td-code"><input type="text" class="prod-field-input" id="code-${p.id}" placeholder="Código"></td>
-      <td><input type="text" class="prod-field-input" id="name-${p.id}" placeholder="Descrição"></td>
-      <td class="td-pkg"><select class="prod-field-input prod-pkg-select" id="pkg-${p.id}">
-        <option value="">Embalagem</option>
-        <option>Caixa 24 un</option>
-        <option>Caixa 16 un</option>
-        <option>Balde 8 Kg</option>
-        <option>Caixa 4 un</option>
-        <option>Pote</option>
-        <option>Balde</option>
-        <option>Válvula</option>
-      </select></td>
-      <td class="td-price"><input type="text" class="prod-field-input" id="price-${p.id}" placeholder="Preço" oninput="updateRowTotal(${p.id})"></td>
-      <td class="td-qty">
-        <input type="number" class="qty-input" id="qty-${p.id}"
-               min="0" step="1" placeholder="0" oninput="onQtyInput(this, ${p.id})">
-      </td>
-      <td class="td-total" id="total-${p.id}"></td>`;
-        tbody.appendChild(tr);
+        if (!catMap.has(p.cat)) catMap.set(p.cat, []);
+        catMap.get(p.cat).push(p);
+      });
+
+      catMap.forEach((products, cat) => {
+        const catTr = document.createElement('tr');
+        catTr.className = 'cat-row';
+        catTr.innerHTML = `<td colspan="6">${cat}</td>`;
+        tbody.appendChild(catTr);
+
+        products.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.className = 'prod-row';
+          tr.innerHTML = `
+        <td class="td-code">${p.code}</td>
+        <td>${p.name}</td>
+        <td class="td-pkg"><select class="prod-field-input prod-pkg-select" id="pkg-${p.id}" onchange="this.classList.remove('err')">
+          <option value="">Embalagem</option>
+          <option>Caixa 24 un</option>
+          <option>Caixa 16 un</option>
+          <option>Balde 8 Kg</option>
+          <option>Caixa 4 un</option>
+          <option>Pote</option>
+          <option>Balde</option>
+          <option>Válvula</option>
+        </select></td>
+        <td class="td-price"><input type="text" class="prod-field-input" id="price-${p.id}" value="R$ " oninput="onPriceInput(this,${p.id})" onfocus="moveCursorToEnd(this)"></td>
+        <td class="td-qty">
+          <input type="number" class="qty-input" id="qty-${p.id}"
+                 min="0" step="1" placeholder="0" oninput="onQtyInput(this, ${p.id})">
+        </td>
+        <td class="td-total" id="total-${p.id}"></td>`;
+          tbody.appendChild(tr);
+        });
       });
     }
 
     function onQtyInput(el, productId) {
       const v = parseInt(el.value);
       if (v > 0) el.classList.add('filled');
-      else el.classList.remove('filled');
+      else {
+        el.classList.remove('filled');
+        const pkg = document.getElementById(`pkg-${productId}`);
+        if (pkg) pkg.classList.remove('err');
+        const price = document.getElementById(`price-${productId}`);
+        if (price) price.classList.remove('err');
+      }
       if (v < 0) el.value = '';
       updateRowTotal(productId);
+    }
+
+    function onPriceInput(el, productId) {
+      const PREFIX = 'R$ ';
+      if (!el.value.startsWith(PREFIX)) {
+        const pos = el.selectionStart;
+        el.value = PREFIX + el.value.replace(/^R\$\s*/i, '');
+        el.setSelectionRange(Math.max(pos, PREFIX.length), Math.max(pos, PREFIX.length));
+      }
+      if (el.value.trim().replace(/^R\$\s*/i, '').length > 0) el.classList.remove('err');
+      updateRowTotal(productId);
+    }
+
+    function moveCursorToEnd(el) {
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
     }
 
     // ═════════════════════════════════════════════════════
@@ -1022,26 +1102,37 @@
       if (!valid) { toast('⚠️ Preencha todos os campos obrigatórios'); return; }
 
       const items = [];
+      let fieldErr = false;
       PRODUCTS.forEach(p => {
-        const qty = parseInt(document.getElementById(`qty-${p.id}`).value) || 0;
-        if (qty > 0) {
-          const code     = document.getElementById(`code-${p.id}`)?.value.trim()  || '';
-          const name     = document.getElementById(`name-${p.id}`)?.value.trim()  || '';
-          const packaging= document.getElementById(`pkg-${p.id}`)?.value.trim()   || '';
-          const priceStr = document.getElementById(`price-${p.id}`)?.value.trim() || '';
-          const rowTotal = calcRowTotal(priceStr, qty);
-          items.push({ id: p.id, cat: '', code, name, packaging, price: priceStr, qty, rowTotal });
-        }
+        const qty = parseInt(document.getElementById(`qty-${p.id}`)?.value) || 0;
+        if (qty <= 0) return;
+
+        const pkgEl   = document.getElementById(`pkg-${p.id}`);
+        const priceEl = document.getElementById(`price-${p.id}`);
+        const packaging = pkgEl?.value || '';
+        const priceRaw  = (priceEl?.value || '').replace(/^R\$\s*/i, '').trim();
+
+        if (!packaging) { pkgEl?.classList.add('err');   fieldErr = true; }
+        if (!priceRaw)  { priceEl?.classList.add('err'); fieldErr = true; }
+        if (!packaging || !priceRaw) return;
+
+        const priceStr = priceEl.value.trim();
+        const rowTotal = calcRowTotal(priceStr, qty);
+        items.push({ id: p.id, cat: p.cat, code: p.code, name: p.name, packaging, price: priceStr, qty, rowTotal });
       });
+
+      if (fieldErr) { toast('⚠️ Preencha embalagem e preço para cada produto adicionado'); return; }
       if (!items.length) { toast('⚠️ Selecione ao menos um produto'); return; }
 
       const now = new Date();
       const ordId = `DRX-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
+      const faturamento = document.querySelector('input[name="f-faturamento"]:checked')?.value || 'Direto';
+
       currentOrder = {
         id: ordId,
         date: now.toISOString(),
-        client: { name: fields[0][1], company: fields[1][1], phone: fields[2][1], email: fields[3][1] },
+        client: { name: fields[0][1], company: fields[1][1], phone: fields[2][1], email: fields[3][1], faturamento },
         items,
         total: items.reduce((s, i) => s + i.qty, 0),
         grandTotal: calcGrandTotal(items),
@@ -1057,16 +1148,18 @@
         el.value = '';
         el.classList.remove('err');
       });
+      const fatDireto = document.getElementById('f-fat-direto');
+      if (fatDireto) fatDireto.checked = true;
       PRODUCTS.forEach(p => {
         const qty = document.getElementById(`qty-${p.id}`);
         qty.value = '';
         qty.classList.remove('filled');
         const tot = document.getElementById(`total-${p.id}`);
         if (tot) { tot.textContent = ''; tot.classList.remove('has-total'); }
-        ['code', 'name', 'pkg', 'price'].forEach(f => {
-          const el = document.getElementById(`${f}-${p.id}`);
-          if (el) el.value = '';
-        });
+        const pkg = document.getElementById(`pkg-${p.id}`);
+        if (pkg) pkg.value = '';
+        const price = document.getElementById(`price-${p.id}`);
+        if (price) price.value = 'R$ ';
       });
       const gt = document.getElementById('grand-total');
       if (gt) { gt.textContent = '—'; gt.style.color = ''; gt.style.fontSize = ''; }
@@ -1090,18 +1183,30 @@
     <div class="info-item"><div class="info-label">Nome</div><div class="info-value">${o.client.name}</div></div>
     <div class="info-item"><div class="info-label">Empresa</div><div class="info-value">${o.client.company}</div></div>
     <div class="info-item"><div class="info-label">Telefone</div><div class="info-value">${o.client.phone}</div></div>
-    <div class="info-item"><div class="info-label">E-mail</div><div class="info-value">${o.client.email}</div></div>`;
+    <div class="info-item"><div class="info-label">E-mail</div><div class="info-value">${o.client.email}</div></div>
+    <div class="info-item"><div class="info-label">Faturamento</div><div class="info-value">${o.client.faturamento || 'Direto'}</div></div>`;
 
-      document.getElementById('confirm-items').innerHTML =
-        o.items.map((i, idx) => `
-      <tr class="prod-row${idx % 2 === 1 ? ' alt-row' : ''}">
+      const confirmCatMap = new Map();
+      o.items.forEach(i => {
+        if (!confirmCatMap.has(i.cat)) confirmCatMap.set(i.cat, []);
+        confirmCatMap.get(i.cat).push(i);
+      });
+      let confirmHtml = '';
+      confirmCatMap.forEach((catItems, cat) => {
+        if (cat) confirmHtml += `<tr class="cat-row"><td colspan="6">${cat}</td></tr>`;
+        catItems.forEach(i => {
+          confirmHtml += `
+      <tr class="prod-row">
         <td class="td-code">${i.code}</td>
         <td>${i.name}</td>
         <td class="td-pkg">${i.packaging}</td>
         <td class="td-price">${i.price}</td>
         <td class="td-qty" style="text-align:center;font-weight:700;">${i.qty}</td>
         <td class="td-total${i.rowTotal != null ? ' has-total' : ''}">${i.rowTotal != null ? fmtCurrency(i.rowTotal) : '—'}</td>
-      </tr>`).join('');
+      </tr>`;
+        });
+      });
+      document.getElementById('confirm-items').innerHTML = confirmHtml;
 
       document.getElementById('confirm-total').textContent =
         o.grandTotal != null ? fmtCurrency(o.grandTotal) : `${o.total} ${o.total === 1 ? 'item' : 'itens'}`;
@@ -1258,6 +1363,7 @@
       [
         ['Nome', order.client.name, 'Empresa', order.client.company],
         ['Telefone', order.client.phone, 'E-mail', order.client.email],
+        ['Faturamento', order.client.faturamento || 'Direto', '', ''],
       ].forEach(([lA, vA, lB, vB]) => {
         doc.setTextColor(120, 120, 120); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
         doc.text(lA + ':', M, y);
@@ -1275,14 +1381,28 @@
       doc.text('ITENS DO PEDIDO', M, y);
       y += 3; doc.line(M, y, W - M, y); y += 1;
 
+      const pdfCatMap = new Map();
+      order.items.forEach(i => {
+        if (!pdfCatMap.has(i.cat)) pdfCatMap.set(i.cat, []);
+        pdfCatMap.get(i.cat).push(i);
+      });
+      const pdfBody = [];
+      pdfCatMap.forEach((catItems, cat) => {
+        if (cat) pdfBody.push([{
+          content: cat, colSpan: 6,
+          styles: { fillColor: [248, 215, 190], fontStyle: 'bold', textColor: [160, 50, 0], fontSize: 8.5, cellPadding: { top: 4, bottom: 4, left: 5, right: 5 } },
+        }]);
+        catItems.forEach(it => pdfBody.push([
+          it.code, it.name, it.packaging, it.price, it.qty,
+          it.rowTotal != null ? fmtCurrency(it.rowTotal) : '—',
+        ]));
+      });
+
       doc.autoTable({
         startY: y,
         margin: { left: M, right: M, bottom: footerH + 18, top: headerH + 6 },
         head: [['Código', 'Descrição', 'Embalagem', 'Preço', 'Qtd', 'Total']],
-        body: order.items.map(it => [
-          it.code, it.name, it.packaging, it.price, it.qty,
-          it.rowTotal != null ? fmtCurrency(it.rowTotal) : '—',
-        ]),
+        body: pdfBody,
         styles: { fontSize: 9, cellPadding: 3.5 },
         headStyles: { fillColor: [228, 81, 1], textColor: 255, fontStyle: 'bold' },
         columnStyles: {
@@ -1329,8 +1449,9 @@
         'CLIENTE',
         `Nome:     ${o.client.name}`,
         `Empresa:  ${o.client.company}`,
-        `Telefone: ${o.client.phone}`,
-        `E-mail:   ${o.client.email}`, '',
+        `Telefone:    ${o.client.phone}`,
+        `E-mail:      ${o.client.email}`,
+        `Faturamento: ${o.client.faturamento || 'Direto'}`, '',
         'PRODUTOS',
         ...o.items.map(i => {
           const rt = i.rowTotal != null ? `  = ${fmtCurrency(i.rowTotal)}` : '';
@@ -1354,7 +1475,8 @@
         `*Nº:* ${o.id}`, `*Data:* ${fmtDate(o.date)}`, '',
         `*CLIENTE*`,
         `*Nome:* ${o.client.name}`, `*Empresa:* ${o.client.company}`,
-        `*Telefone:* ${o.client.phone}`, `*E-mail:* ${o.client.email}`, '',
+        `*Telefone:* ${o.client.phone}`, `*E-mail:* ${o.client.email}`,
+        `*Faturamento:* ${o.client.faturamento || 'Direto'}`, '',
         `*PRODUTOS*`,
         ...o.items.map(i => {
           const codeStr = i.code && i.code !== '---' ? `[${i.code}] ` : '';
