@@ -799,6 +799,10 @@
             <label for="f-cnpj">CNPJ</label>
             <input type="text" id="f-cnpj" placeholder="00.000.000/0000-00" maxlength="18" autocomplete="off">
           </div>
+          <div class="form-group">
+            <label for="f-ie">Insc. Estadual</label>
+            <input type="text" id="f-ie" placeholder="Inscrição Estadual" autocomplete="off">
+          </div>
           <div class="form-group form-group-full">
             <label for="f-address">Endereço</label>
             <input type="text" id="f-address" placeholder="Rua, número, complemento" autocomplete="street-address">
@@ -1158,6 +1162,7 @@
 
       const faturamento = document.querySelector('input[name="f-faturamento"]:checked')?.value || 'Direto';
       const cnpj    = document.getElementById('f-cnpj').value.trim();
+      const ie      = document.getElementById('f-ie').value.trim();
       const address = document.getElementById('f-address').value.trim();
       const city    = document.getElementById('f-city').value.trim();
       const state   = document.getElementById('f-state').value.trim().toUpperCase();
@@ -1167,7 +1172,7 @@
       currentOrder = {
         id: ordId,
         date: now.toISOString(),
-        client: { name: fields[0][1], company: fields[1][1], phone: fields[2][1], email: fields[3][1], faturamento, cnpj, address, city, state, zip, oc },
+        client: { name: fields[0][1], company: fields[1][1], phone: fields[2][1], email: fields[3][1], faturamento, cnpj, ie, address, city, state, zip, oc },
         items,
         total: items.reduce((s, i) => s + i.qty, 0),
         grandTotal: calcGrandTotal(items),
@@ -1178,7 +1183,7 @@
     }
 
     function clearForm() {
-      ['f-name', 'f-company', 'f-phone', 'f-email', 'f-cnpj', 'f-address', 'f-city', 'f-state', 'f-zip', 'f-oc'].forEach(id => {
+      ['f-name', 'f-company', 'f-phone', 'f-email', 'f-cnpj', 'f-ie', 'f-address', 'f-city', 'f-state', 'f-zip', 'f-oc'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.value = ''; el.classList.remove('err'); }
       });
@@ -1217,6 +1222,7 @@
     <div class="info-item"><div class="info-label">Nome</div><div class="info-value">${o.client.name}</div></div>
     <div class="info-item"><div class="info-label">Empresa</div><div class="info-value">${o.client.company}</div></div>
     ${o.client.cnpj ? `<div class="info-item"><div class="info-label">CNPJ</div><div class="info-value">${o.client.cnpj}</div></div>` : ''}
+    ${o.client.ie   ? `<div class="info-item"><div class="info-label">Insc. Estadual</div><div class="info-value">${o.client.ie}</div></div>` : ''}
     <div class="info-item"><div class="info-label">Telefone</div><div class="info-value">${o.client.phone}</div></div>
     <div class="info-item"><div class="info-label">E-mail</div><div class="info-value">${o.client.email}</div></div>
     ${o.client.address ? `<div class="info-item"><div class="info-label">Endereço</div><div class="info-value">${o.client.address}</div></div>` : ''}
@@ -1402,8 +1408,8 @@
       const half = (W - M * 2) / 2;
       const clientRows = [
         ['Nome', order.client.name, 'Empresa', order.client.company],
-        ['Telefone', order.client.phone, 'CNPJ', order.client.cnpj || ''],
-        ['E-mail', order.client.email, '', ''],
+        ['Telefone', order.client.phone, 'E-mail', order.client.email],
+        ['CNPJ', order.client.cnpj || '', 'Insc. Estadual', order.client.ie || ''],
       ];
       if (order.client.address) clientRows.push(['Endereço', order.client.address, '', '']);
       if (order.client.city || order.client.state) clientRows.push(['Cidade', order.client.city || '', 'Estado', order.client.state || '']);
@@ -1497,6 +1503,7 @@
         `Telefone:    ${o.client.phone}`,
         `E-mail:      ${o.client.email}`,
         ...(o.client.cnpj    ? [`CNPJ:        ${o.client.cnpj}`]                  : []),
+        ...(o.client.ie      ? [`Insc. Est.:  ${o.client.ie}`]                    : []),
         ...(o.client.address ? [`Endereço:    ${o.client.address}`]               : []),
         ...(o.client.city    ? [`Cidade:      ${o.client.city}${o.client.state ? ' - ' + o.client.state : ''}`] : []),
         ...(o.client.zip     ? [`CEP:         ${o.client.zip}`]                   : []),
@@ -1527,6 +1534,7 @@
         `*Nome:* ${o.client.name}`, `*Empresa:* ${o.client.company}`,
         `*Telefone:* ${o.client.phone}`, `*E-mail:* ${o.client.email}`,
         ...(o.client.cnpj    ? [`*CNPJ:* ${o.client.cnpj}`]                                                 : []),
+        ...(o.client.ie      ? [`*Insc. Estadual:* ${o.client.ie}`]                                         : []),
         ...(o.client.address ? [`*Endereço:* ${o.client.address}`]                                          : []),
         ...(o.client.city    ? [`*Cidade:* ${o.client.city}${o.client.state ? ' - ' + o.client.state : ''}`] : []),
         ...(o.client.zip     ? [`*CEP:* ${o.client.zip}`]                                                   : []),
