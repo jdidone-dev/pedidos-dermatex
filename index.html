@@ -194,6 +194,11 @@
       color: var(--text);
     }
     .radio-option input[type="radio"] { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+    .form-group-full { grid-column: 1 / -1; }
+    .oc-group { display: flex; flex-direction: column; gap: 5px; }
+    .oc-group label { font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .oc-input { padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-size: .9rem; width: 120px; outline: none; transition: border-color .2s; }
+    .oc-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(228,81,1,.13); }
 
     /* ── PRODUCTS TABLE ─────────────────────────────── */
     .hint {
@@ -790,6 +795,26 @@
             <label for="f-email">E-mail</label>
             <input type="email" id="f-email" placeholder="email@exemplo.com" autocomplete="email">
           </div>
+          <div class="form-group form-group-full">
+            <label for="f-address">Endereço</label>
+            <input type="text" id="f-address" placeholder="Rua, número, complemento" autocomplete="street-address">
+          </div>
+          <div class="form-group">
+            <label for="f-city">Cidade</label>
+            <input type="text" id="f-city" placeholder="Cidade" autocomplete="address-level2">
+          </div>
+          <div class="form-group">
+            <label for="f-state">Estado</label>
+            <input type="text" id="f-state" placeholder="UF" maxlength="2" autocomplete="address-level1">
+          </div>
+          <div class="form-group">
+            <label for="f-zip">CEP</label>
+            <input type="text" id="f-zip" placeholder="00000-000" autocomplete="postal-code">
+          </div>
+          <div class="form-group">
+            <label for="f-oc">O.C.</label>
+            <input type="text" id="f-oc" placeholder="Nº O.C.">
+          </div>
         </div>
         <div class="radio-group">
           <span class="radio-group-label">Faturamento</span>
@@ -1128,11 +1153,16 @@
       const ordId = `DRX-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
       const faturamento = document.querySelector('input[name="f-faturamento"]:checked')?.value || 'Direto';
+      const address = document.getElementById('f-address').value.trim();
+      const city    = document.getElementById('f-city').value.trim();
+      const state   = document.getElementById('f-state').value.trim().toUpperCase();
+      const zip     = document.getElementById('f-zip').value.trim();
+      const oc      = document.getElementById('f-oc').value.trim();
 
       currentOrder = {
         id: ordId,
         date: now.toISOString(),
-        client: { name: fields[0][1], company: fields[1][1], phone: fields[2][1], email: fields[3][1], faturamento },
+        client: { name: fields[0][1], company: fields[1][1], phone: fields[2][1], email: fields[3][1], faturamento, address, city, state, zip, oc },
         items,
         total: items.reduce((s, i) => s + i.qty, 0),
         grandTotal: calcGrandTotal(items),
@@ -1143,10 +1173,9 @@
     }
 
     function clearForm() {
-      ['f-name', 'f-company', 'f-phone', 'f-email'].forEach(id => {
+      ['f-name', 'f-company', 'f-phone', 'f-email', 'f-address', 'f-city', 'f-state', 'f-zip', 'f-oc'].forEach(id => {
         const el = document.getElementById(id);
-        el.value = '';
-        el.classList.remove('err');
+        if (el) { el.value = ''; el.classList.remove('err'); }
       });
       const fatDireto = document.getElementById('f-fat-direto');
       if (fatDireto) fatDireto.checked = true;
@@ -1184,6 +1213,11 @@
     <div class="info-item"><div class="info-label">Empresa</div><div class="info-value">${o.client.company}</div></div>
     <div class="info-item"><div class="info-label">Telefone</div><div class="info-value">${o.client.phone}</div></div>
     <div class="info-item"><div class="info-label">E-mail</div><div class="info-value">${o.client.email}</div></div>
+    ${o.client.address ? `<div class="info-item"><div class="info-label">Endereço</div><div class="info-value">${o.client.address}</div></div>` : ''}
+    ${o.client.city    ? `<div class="info-item"><div class="info-label">Cidade</div><div class="info-value">${o.client.city}</div></div>` : ''}
+    ${o.client.state   ? `<div class="info-item"><div class="info-label">Estado</div><div class="info-value">${o.client.state}</div></div>` : ''}
+    ${o.client.zip     ? `<div class="info-item"><div class="info-label">CEP</div><div class="info-value">${o.client.zip}</div></div>` : ''}
+    ${o.client.oc      ? `<div class="info-item"><div class="info-label">O.C.</div><div class="info-value">${o.client.oc}</div></div>` : ''}
     <div class="info-item"><div class="info-label">Faturamento</div><div class="info-value">${o.client.faturamento || 'Direto'}</div></div>`;
 
       const confirmCatMap = new Map();
@@ -1360,11 +1394,15 @@
       y += 6;
 
       const half = (W - M * 2) / 2;
-      [
+      const clientRows = [
         ['Nome', order.client.name, 'Empresa', order.client.company],
         ['Telefone', order.client.phone, 'E-mail', order.client.email],
-        ['Faturamento', order.client.faturamento || 'Direto', '', ''],
-      ].forEach(([lA, vA, lB, vB]) => {
+      ];
+      if (order.client.address) clientRows.push(['Endereço', order.client.address, '', '']);
+      if (order.client.city || order.client.state) clientRows.push(['Cidade', order.client.city || '', 'Estado', order.client.state || '']);
+      if (order.client.zip || order.client.oc) clientRows.push(['CEP', order.client.zip || '', 'O.C.', order.client.oc || '']);
+      clientRows.push(['Faturamento', order.client.faturamento || 'Direto', '', '']);
+      clientRows.forEach(([lA, vA, lB, vB]) => {
         doc.setTextColor(120, 120, 120); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
         doc.text(lA + ':', M, y);
         doc.setFont('helvetica', 'normal'); doc.setTextColor(40, 40, 40); doc.setFontSize(9);
@@ -1451,6 +1489,10 @@
         `Empresa:  ${o.client.company}`,
         `Telefone:    ${o.client.phone}`,
         `E-mail:      ${o.client.email}`,
+        ...(o.client.address ? [`Endereço:    ${o.client.address}`]               : []),
+        ...(o.client.city    ? [`Cidade:      ${o.client.city}${o.client.state ? ' - ' + o.client.state : ''}`] : []),
+        ...(o.client.zip     ? [`CEP:         ${o.client.zip}`]                   : []),
+        ...(o.client.oc      ? [`O.C.:        ${o.client.oc}`]                    : []),
         `Faturamento: ${o.client.faturamento || 'Direto'}`, '',
         'PRODUTOS',
         ...o.items.map(i => {
@@ -1476,6 +1518,10 @@
         `*CLIENTE*`,
         `*Nome:* ${o.client.name}`, `*Empresa:* ${o.client.company}`,
         `*Telefone:* ${o.client.phone}`, `*E-mail:* ${o.client.email}`,
+        ...(o.client.address ? [`*Endereço:* ${o.client.address}`]                                          : []),
+        ...(o.client.city    ? [`*Cidade:* ${o.client.city}${o.client.state ? ' - ' + o.client.state : ''}`] : []),
+        ...(o.client.zip     ? [`*CEP:* ${o.client.zip}`]                                                   : []),
+        ...(o.client.oc      ? [`*O.C.:* ${o.client.oc}`]                                                   : []),
         `*Faturamento:* ${o.client.faturamento || 'Direto'}`, '',
         `*PRODUTOS*`,
         ...o.items.map(i => {
