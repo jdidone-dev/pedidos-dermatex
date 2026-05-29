@@ -271,6 +271,11 @@
       text-align: right !important;
     }
 
+    .th-icms, .th-ipi { width: 64px; text-align: center !important; }
+    .td-icms, .td-ipi { text-align: center; }
+    .td-icms .prod-field-input,
+    .td-ipi  .prod-field-input { text-align: center; }
+
     .td-total {
       font-size: .84rem;
       font-weight: 700;
@@ -823,6 +828,10 @@
             <label for="f-oc">O.C.</label>
             <input type="text" id="f-oc" placeholder="Nº O.C.">
           </div>
+          <div class="form-group">
+            <label for="f-prazo">Prazo</label>
+            <input type="text" id="f-prazo" placeholder="Ex: 30/60/90 dias">
+          </div>
         </div>
         <div class="radio-group">
           <span class="radio-group-label">Faturamento</span>
@@ -834,6 +843,17 @@
             <label class="radio-option">
               <input type="radio" name="f-faturamento" id="f-fat-revenda" value="Revenda">
               <span>Revenda</span>
+            </label>
+          </div>
+          <span class="radio-group-label" style="margin-left:10px;">Transporte</span>
+          <div class="radio-options">
+            <label class="radio-option">
+              <input type="radio" name="f-transporte" id="f-transp-cif" value="CIF" checked>
+              <span>CIF</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="f-transporte" id="f-transp-fob" value="FOB">
+              <span>FOB</span>
             </label>
           </div>
         </div>
@@ -851,6 +871,8 @@
                 <th class="th-pkg">Embalagem</th>
                 <th class="th-price">Preço</th>
                 <th class="th-qty">Qtd</th>
+                <th class="th-icms">ICMS</th>
+                <th class="th-ipi">IPI</th>
                 <th class="th-total">Total</th>
               </tr>
             </thead>
@@ -900,6 +922,8 @@
                 <th class="th-pkg">Embalagem</th>
                 <th class="th-price">Preço</th>
                 <th class="th-qty">Qtd</th>
+                <th class="th-icms">ICMS</th>
+                <th class="th-ipi">IPI</th>
                 <th class="th-total">Total</th>
               </tr>
             </thead>
@@ -1055,7 +1079,7 @@
       catMap.forEach((products, cat) => {
         const catTr = document.createElement('tr');
         catTr.className = 'cat-row';
-        catTr.innerHTML = `<td colspan="6">${cat}</td>`;
+        catTr.innerHTML = `<td colspan="8">${cat}</td>`;
         tbody.appendChild(catTr);
 
         products.forEach(p => {
@@ -1079,6 +1103,8 @@
           <input type="number" class="qty-input" id="qty-${p.id}"
                  min="0" step="1" placeholder="0" oninput="onQtyInput(this, ${p.id})">
         </td>
+        <td class="td-icms"><input type="text" class="prod-field-input" id="icms-${p.id}" placeholder="0%"></td>
+        <td class="td-ipi"><input type="text" class="prod-field-input" id="ipi-${p.id}" placeholder="0%"></td>
         <td class="td-total" id="total-${p.id}"></td>`;
           tbody.appendChild(tr);
         });
@@ -1121,10 +1147,18 @@
     async function submitOrder() {
       // Validação
       const fields = [
-        ['f-name', document.getElementById('f-name').value.trim()],
+        ['f-name',    document.getElementById('f-name').value.trim()],
         ['f-company', document.getElementById('f-company').value.trim()],
-        ['f-phone', document.getElementById('f-phone').value.trim()],
-        ['f-email', document.getElementById('f-email').value.trim()],
+        ['f-phone',   document.getElementById('f-phone').value.trim()],
+        ['f-email',   document.getElementById('f-email').value.trim()],
+        ['f-cnpj',    document.getElementById('f-cnpj').value.trim()],
+        ['f-ie',      document.getElementById('f-ie').value.trim()],
+        ['f-address', document.getElementById('f-address').value.trim()],
+        ['f-city',    document.getElementById('f-city').value.trim()],
+        ['f-state',   document.getElementById('f-state').value.trim()],
+        ['f-zip',     document.getElementById('f-zip').value.trim()],
+        ['f-oc',      document.getElementById('f-oc').value.trim()],
+        ['f-prazo',   document.getElementById('f-prazo').value.trim()],
       ];
       let valid = true;
       fields.forEach(([id, val]) => {
@@ -1150,8 +1184,10 @@
         if (!packaging || !priceRaw) return;
 
         const priceStr = priceEl.value.trim();
+        const icms     = document.getElementById(`icms-${p.id}`)?.value.trim() || '';
+        const ipi      = document.getElementById(`ipi-${p.id}`)?.value.trim()  || '';
         const rowTotal = calcRowTotal(priceStr, qty);
-        items.push({ id: p.id, cat: p.cat, code: p.code, name: p.name, packaging, price: priceStr, qty, rowTotal });
+        items.push({ id: p.id, cat: p.cat, code: p.code, name: p.name, packaging, price: priceStr, qty, icms, ipi, rowTotal });
       });
 
       if (fieldErr) { toast('⚠️ Preencha embalagem e preço para cada produto adicionado'); return; }
@@ -1161,6 +1197,7 @@
       const ordId = `DRX-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
       const faturamento = document.querySelector('input[name="f-faturamento"]:checked')?.value || 'Direto';
+      const transporte  = document.querySelector('input[name="f-transporte"]:checked')?.value  || 'CIF';
       const cnpj    = document.getElementById('f-cnpj').value.trim();
       const ie      = document.getElementById('f-ie').value.trim();
       const address = document.getElementById('f-address').value.trim();
@@ -1168,11 +1205,12 @@
       const state   = document.getElementById('f-state').value.trim().toUpperCase();
       const zip     = document.getElementById('f-zip').value.trim();
       const oc      = document.getElementById('f-oc').value.trim();
+      const prazo   = document.getElementById('f-prazo').value.trim();
 
       currentOrder = {
         id: ordId,
         date: now.toISOString(),
-        client: { name: fields[0][1], company: fields[1][1], phone: fields[2][1], email: fields[3][1], faturamento, cnpj, ie, address, city, state, zip, oc },
+        client: { name: fields[0][1], company: fields[1][1], phone: fields[2][1], email: fields[3][1], faturamento, transporte, cnpj, ie, address, city, state, zip, oc, prazo },
         items,
         total: items.reduce((s, i) => s + i.qty, 0),
         grandTotal: calcGrandTotal(items),
@@ -1183,12 +1221,14 @@
     }
 
     function clearForm() {
-      ['f-name', 'f-company', 'f-phone', 'f-email', 'f-cnpj', 'f-ie', 'f-address', 'f-city', 'f-state', 'f-zip', 'f-oc'].forEach(id => {
+      ['f-name', 'f-company', 'f-phone', 'f-email', 'f-cnpj', 'f-ie', 'f-address', 'f-city', 'f-state', 'f-zip', 'f-oc', 'f-prazo'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.value = ''; el.classList.remove('err'); }
       });
       const fatDireto = document.getElementById('f-fat-direto');
       if (fatDireto) fatDireto.checked = true;
+      const transpCif = document.getElementById('f-transp-cif');
+      if (transpCif) transpCif.checked = true;
       PRODUCTS.forEach(p => {
         const qty = document.getElementById(`qty-${p.id}`);
         qty.value = '';
@@ -1199,6 +1239,10 @@
         if (pkg) pkg.value = '';
         const price = document.getElementById(`price-${p.id}`);
         if (price) price.value = 'R$ ';
+        const icmsEl = document.getElementById(`icms-${p.id}`);
+        if (icmsEl) icmsEl.value = '';
+        const ipiEl = document.getElementById(`ipi-${p.id}`);
+        if (ipiEl) ipiEl.value = '';
       });
       const gt = document.getElementById('grand-total');
       if (gt) { gt.textContent = '—'; gt.style.color = ''; gt.style.fontSize = ''; }
@@ -1230,7 +1274,9 @@
     ${o.client.state   ? `<div class="info-item"><div class="info-label">Estado</div><div class="info-value">${o.client.state}</div></div>` : ''}
     ${o.client.zip     ? `<div class="info-item"><div class="info-label">CEP</div><div class="info-value">${o.client.zip}</div></div>` : ''}
     ${o.client.oc      ? `<div class="info-item"><div class="info-label">O.C.</div><div class="info-value">${o.client.oc}</div></div>` : ''}
-    <div class="info-item"><div class="info-label">Faturamento</div><div class="info-value">${o.client.faturamento || 'Direto'}</div></div>`;
+    <div class="info-item"><div class="info-label">Faturamento</div><div class="info-value">${o.client.faturamento || 'Direto'}</div></div>
+    <div class="info-item"><div class="info-label">Transporte</div><div class="info-value">${o.client.transporte || 'CIF'}</div></div>
+    ${o.client.prazo ? `<div class="info-item"><div class="info-label">Prazo</div><div class="info-value">${o.client.prazo}</div></div>` : ''}`;
 
       const confirmCatMap = new Map();
       o.items.forEach(i => {
@@ -1239,7 +1285,7 @@
       });
       let confirmHtml = '';
       confirmCatMap.forEach((catItems, cat) => {
-        if (cat) confirmHtml += `<tr class="cat-row"><td colspan="6">${cat}</td></tr>`;
+        if (cat) confirmHtml += `<tr class="cat-row"><td colspan="8">${cat}</td></tr>`;
         catItems.forEach(i => {
           confirmHtml += `
       <tr class="prod-row">
@@ -1248,6 +1294,8 @@
         <td class="td-pkg">${i.packaging}</td>
         <td class="td-price">${i.price}</td>
         <td class="td-qty" style="text-align:center;font-weight:700;">${i.qty}</td>
+        <td class="td-icms" style="text-align:center;">${i.icms || '—'}</td>
+        <td class="td-ipi"  style="text-align:center;">${i.ipi  || '—'}</td>
         <td class="td-total${i.rowTotal != null ? ' has-total' : ''}">${i.rowTotal != null ? fmtCurrency(i.rowTotal) : '—'}</td>
       </tr>`;
         });
@@ -1414,7 +1462,8 @@
       if (order.client.address) clientRows.push(['Endereço', order.client.address, '', '']);
       if (order.client.city || order.client.state) clientRows.push(['Cidade', order.client.city || '', 'Estado', order.client.state || '']);
       if (order.client.zip || order.client.oc) clientRows.push(['CEP', order.client.zip || '', 'O.C.', order.client.oc || '']);
-      clientRows.push(['Faturamento', order.client.faturamento || 'Direto', '', '']);
+      clientRows.push(['Faturamento', order.client.faturamento || 'Direto', 'Transporte', order.client.transporte || 'CIF']);
+      if (order.client.prazo) clientRows.push(['Prazo', order.client.prazo, '', '']);
       clientRows.forEach(([lA, vA, lB, vB]) => {
         doc.setTextColor(120, 120, 120); doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
         doc.text(lA + ':', M, y);
@@ -1440,11 +1489,12 @@
       const pdfBody = [];
       pdfCatMap.forEach((catItems, cat) => {
         if (cat) pdfBody.push([{
-          content: cat, colSpan: 6,
+          content: cat, colSpan: 8,
           styles: { fillColor: [248, 215, 190], fontStyle: 'bold', textColor: [160, 50, 0], fontSize: 8.5, cellPadding: { top: 4, bottom: 4, left: 5, right: 5 } },
         }]);
         catItems.forEach(it => pdfBody.push([
           it.code, it.name, it.packaging, it.price, it.qty,
+          it.icms || '', it.ipi || '',
           it.rowTotal != null ? fmtCurrency(it.rowTotal) : '—',
         ]));
       });
@@ -1452,7 +1502,7 @@
       doc.autoTable({
         startY: y,
         margin: { left: M, right: M, bottom: footerH + 18, top: headerH + 6 },
-        head: [['Código', 'Descrição', 'Embalagem', 'Preço', 'Qtd', 'Total']],
+        head: [['Código', 'Descrição', 'Embalagem', 'Preço', 'Qtd', 'ICMS', 'IPI', 'Total']],
         body: pdfBody,
         styles: { fontSize: 9, cellPadding: 3.5 },
         headStyles: { fillColor: [228, 81, 1], textColor: 255, fontStyle: 'bold' },
@@ -1461,7 +1511,9 @@
           2: { cellWidth: 28 },
           3: { cellWidth: 22, halign: 'right' },
           4: { cellWidth: 13, halign: 'center' },
-          5: { cellWidth: 26, halign: 'right', fontStyle: 'bold' },
+          5: { cellWidth: 14, halign: 'center' },
+          6: { cellWidth: 14, halign: 'center' },
+          7: { cellWidth: 26, halign: 'right', fontStyle: 'bold' },
         },
         alternateRowStyles: { fillColor: [252, 232, 218] },
         didDrawPage(data) {
@@ -1508,7 +1560,9 @@
         ...(o.client.city    ? [`Cidade:      ${o.client.city}${o.client.state ? ' - ' + o.client.state : ''}`] : []),
         ...(o.client.zip     ? [`CEP:         ${o.client.zip}`]                   : []),
         ...(o.client.oc      ? [`O.C.:        ${o.client.oc}`]                    : []),
-        `Faturamento: ${o.client.faturamento || 'Direto'}`, '',
+        `Faturamento: ${o.client.faturamento || 'Direto'}`,
+        `Transporte:  ${o.client.transporte  || 'CIF'}`,
+        ...(o.client.prazo ? [`Prazo:       ${o.client.prazo}`] : []), '',
         'PRODUTOS',
         ...o.items.map(i => {
           const rt = i.rowTotal != null ? `  = ${fmtCurrency(i.rowTotal)}` : '';
@@ -1539,7 +1593,9 @@
         ...(o.client.city    ? [`*Cidade:* ${o.client.city}${o.client.state ? ' - ' + o.client.state : ''}`] : []),
         ...(o.client.zip     ? [`*CEP:* ${o.client.zip}`]                                                   : []),
         ...(o.client.oc      ? [`*O.C.:* ${o.client.oc}`]                                                   : []),
-        `*Faturamento:* ${o.client.faturamento || 'Direto'}`, '',
+        `*Faturamento:* ${o.client.faturamento || 'Direto'}`,
+        `*Transporte:* ${o.client.transporte  || 'CIF'}`,
+        ...(o.client.prazo ? [`*Prazo:* ${o.client.prazo}`] : []), '',
         `*PRODUTOS*`,
         ...o.items.map(i => {
           const codeStr = i.code && i.code !== '---' ? `[${i.code}] ` : '';
