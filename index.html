@@ -1089,7 +1089,7 @@
         <td class="td-code">${p.code}</td>
         <td>${p.name}</td>
         <td class="td-pkg"><select class="prod-field-input prod-pkg-select" id="pkg-${p.id}" onchange="this.classList.remove('err')">
-          <option value="">Embalagem</option>
+          <option value="">Selec.</option>
           <option>Caixa 24 un</option>
           <option>Caixa 16 un</option>
           <option>Balde 8 Kg</option>
@@ -1104,7 +1104,7 @@
                  min="0" step="1" placeholder="0" oninput="onQtyInput(this, ${p.id})">
         </td>
         <td class="td-icms"><input type="text" class="prod-field-input" id="icms-${p.id}" placeholder="0%"></td>
-        <td class="td-ipi"><input type="text" class="prod-field-input" id="ipi-${p.id}" placeholder="0%"></td>
+        <td class="td-ipi">3,25%</td>
         <td class="td-total" id="total-${p.id}"></td>`;
           tbody.appendChild(tr);
         });
@@ -1185,7 +1185,7 @@
 
         const priceStr = priceEl.value.trim();
         const icms     = document.getElementById(`icms-${p.id}`)?.value.trim() || '';
-        const ipi      = document.getElementById(`ipi-${p.id}`)?.value.trim()  || '';
+        const ipi      = '3,25%';
         const rowTotal = calcRowTotal(priceStr, qty);
         items.push({ id: p.id, cat: p.cat, code: p.code, name: p.name, packaging, price: priceStr, qty, icms, ipi, rowTotal });
       });
@@ -1241,8 +1241,6 @@
         if (price) price.value = 'R$ ';
         const icmsEl = document.getElementById(`icms-${p.id}`);
         if (icmsEl) icmsEl.value = '';
-        const ipiEl = document.getElementById(`ipi-${p.id}`);
-        if (ipiEl) ipiEl.value = '';
       });
       const gt = document.getElementById('grand-total');
       if (gt) { gt.textContent = '—'; gt.style.color = ''; gt.style.fontSize = ''; }
